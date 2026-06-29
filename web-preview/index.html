@@ -207,6 +207,46 @@
       const writeChildren = (value) => localStorage.setItem(childKey, JSON.stringify(value));
       const readBrands = () => JSON.parse(localStorage.getItem(brandKey) || "[]");
       const writeBrands = (value) => localStorage.setItem(brandKey, JSON.stringify(value));
+      const readBackup = () => ({
+        app: "これ着れる？",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        children: readChildren(),
+        brands: readBrands(),
+      });
+      const downloadBackup = () => {
+        const blob = new Blob([JSON.stringify(readBackup(), null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `kore-kireru-backup-${today()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      };
+      const importBackup = (file) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(String(reader.result || "{}"));
+            if (!Array.isArray(parsed.children) || !Array.isArray(parsed.brands)) {
+              alert("バックアップファイルの形式が違います。");
+              return;
+            }
+            if (!confirm("今このブラウザに入っているデータを、バックアップの内容で置き換えます。よろしいですか？")) return;
+            writeChildren(parsed.children);
+            writeBrands(parsed.brands);
+            screen = "home";
+            render();
+            alert("バックアップを読み込みました。");
+          } catch {
+            alert("バックアップファイルを読み込めませんでした。");
+          }
+        };
+        reader.readAsText(file);
+      };
       const today = () => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -317,7 +357,7 @@
       }
       function renderHome() {
         const children = readChildren();
-        app.innerHTML = `<div class="toolbar"><button class="primary" data-action="add">子供を追加</button><button class="secondary" data-action="brand">ブランドを追加</button></div><h2>登録済みの子供</h2>${children.length ? children.map((child) => `<section class="card">
+        app.innerHTML = `<div class="toolbar"><button class="primary" data-action="add">子供を追加</button><button class="secondary" data-action="brand">ブランドを追加</button><button class="secondary" data-action="export">バックアップを書き出す</button><label class="secondary" style="display:inline-flex;align-items:center;justify-content:center;margin:0;cursor:pointer;">バックアップを読み込む<input type="file" accept="application/json" data-action="import" style="display:none;"></label></div><h2>登録済みの子供</h2>${children.length ? children.map((child) => `<section class="card">
           <div class="topline"><h3>${esc(child.name)} <span class="muted">${age(child.birthDate)} ・ ${label(genders, child.gender || "unspecified")}</span></h3><button class="secondary" data-action="profile" data-id="${child.id}">子供の情報を編集</button></div>
           <p class="current">${currentText(child)}</p>
           ${sizeSummary("下着", sizeRecords(child, "underwearRecords"))}
@@ -325,13 +365,13 @@
           ${sizeSummary("ボトムス", sizeRecords(child, "bottomsRecords", child.bottomsSize))}
           ${sizeSummary("靴下", sizeRecords(child, "sockRecords"))}
           ${sizeSummary("靴", sizeRecords(child, "shoeRecords", child.shoeSize), true)}
-          <div class="row"><button class="secondary" data-action="view" data-id="${child.id}">記録を見る</button><button class="small" data-action="edit" data-id="${child.id}">記録を追加</button><button class="danger" data-action="delete" data-id="${child.id}">削除</button></div>
+          <div class="row"><button class="small" data-action="edit" data-id="${child.id}">情報を追加</button><button class="secondary" data-action="view" data-id="${child.id}">記録を見る</button><button class="danger" data-action="delete" data-id="${child.id}">削除</button></div>
         </section>`).join("") : `<div class="empty">まずは子供情報を登録してください。</div>`}`;
       }
       function renderForm() {
         const child = editing || {};
         const showProfile = !editing || profileOpen;
-        app.innerHTML = `<div class="topline"><h2>${editing ? "記録を追加" : "子供を追加"}</h2>${editing ? `<button type="button" class="secondary" data-action="toggle-profile">子供の情報を編集</button>` : ""}</div>
+        app.innerHTML = `<div class="topline"><h2>${editing ? "情報を追加" : "子供を追加"}</h2>${editing ? `<button type="button" class="secondary" data-action="toggle-profile">子供の情報を編集</button>` : ""}</div>
         <form id="childForm">
           ${showProfile ? `<section class="card">${field("名前", "name", child.name || "", "例: はる")}${dateSelect("birth", "生年月日（任意）", child.birthDate || "")}<strong>性別</strong><div class="radio-row">${genders.map(([v, l]) => `<label><input type="radio" name="gender" value="${v}" ${(child.gender || "unspecified") === v ? "checked" : ""}>${l}</label>`).join("")}</div></section>` : `<input type="hidden" name="name" value="${esc(child.name || "")}"><input type="hidden" name="gender" value="${child.gender || "unspecified"}"><section class="card"><h3>${esc(child.name || "")}</h3><p class="muted">${age(child.birthDate)} ・ ${label(genders, child.gender || "unspecified")}</p></section>`}
           ${!editing || profileOpen || recordChoice === "growth" ? `<section class="card"><h3>身長・体重</h3><strong>記録日</strong><div class="radio-row"><label><input type="radio" name="recordDateMode" value="today" checked>今日（${today()}）</label><label><input type="radio" name="recordDateMode" value="custom">日付を選ぶ</label></div>${dateSelect("record", "任意の日付", today())}${field("身長 cm（任意）", "heightCm", "", "例: 123", "number")}${field("体重 kg（任意）", "weightKg", "", "例: 32", "number")}</section>` : ""}
@@ -352,7 +392,7 @@
       }
       function renderChoose() {
         const choices = [["growth", "身長／体重"], ...sizeCategories.map(([field, title]) => [field, title])];
-        app.innerHTML = `<h2>何を記録する？</h2><section class="card"><h3>${esc(editing?.name || "")}</h3><p class="muted">${age(editing?.birthDate)} ・ ${label(genders, editing?.gender || "unspecified")}</p></section><div class="choice-grid">${choices.map(([value, title]) => `<button data-action="choose" data-choice="${value}">${title}</button>`).join("")}</div><p><button class="secondary" data-action="home">戻る</button></p>`;
+        app.innerHTML = `<h2>何を追加する？</h2><section class="card"><h3>${esc(editing?.name || "")}</h3><p class="muted">${age(editing?.birthDate)} ・ ${label(genders, editing?.gender || "unspecified")}</p></section><div class="choice-grid">${choices.map(([value, title]) => `<button data-action="choose" data-choice="${value}">${title}</button>`).join("")}</div><p><button class="secondary" data-action="home">戻る</button></p>`;
       }
       function renderRecords() {
         const child = viewing;
@@ -437,8 +477,10 @@
         const button = event.target.closest("[data-action]");
         if (!button) return;
         const action = button.dataset.action;
+        if (action === "import") return;
         if (action === "home") screen = "home";
         if (action === "brand") screen = "brand";
+        if (action === "export") downloadBackup();
         if (action === "add") { editing = null; profileOpen = true; recordChoice = null; screen = "form"; }
         if (action === "edit") { editing = readChildren().find((c) => c.id === button.dataset.id); profileOpen = false; recordChoice = null; screen = "choose"; }
         if (action === "profile") { editing = readChildren().find((c) => c.id === button.dataset.id); profileOpen = true; recordChoice = null; screen = "form"; }
@@ -447,6 +489,12 @@
         if (action === "view") { viewing = readChildren().find((c) => c.id === button.dataset.id); screen = "records"; }
         if (action === "delete" && confirm("削除しますか？")) writeChildren(readChildren().filter((c) => c.id !== button.dataset.id));
         render();
+      });
+      app.addEventListener("change", (event) => {
+        if (event.target?.dataset?.action === "import") {
+          importBackup(event.target.files?.[0]);
+          event.target.value = "";
+        }
       });
       render();
     </script>

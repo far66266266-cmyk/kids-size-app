@@ -566,11 +566,11 @@ function Home(props: {
               <SizeSummary title="靴下" records={normalizeSizeRecords(child.sockRecords)} />
               <SizeSummary title="靴" records={normalizeSizeRecords(child.shoeRecords, child.shoeSize)} isLast />
               <View style={styles.cardActions}>
+                <Pressable style={styles.smallButton} onPress={() => props.onAddRecord(child)}>
+                  <Text style={styles.smallButtonText}>情報を追加</Text>
+                </Pressable>
                 <Pressable style={styles.secondaryMiniButton} onPress={() => props.onRecords(child)}>
                   <Text style={styles.secondaryButtonText}>記録を見る</Text>
-                </Pressable>
-                <Pressable style={styles.smallButton} onPress={() => props.onAddRecord(child)}>
-                  <Text style={styles.smallButtonText}>記録を追加</Text>
                 </Pressable>
                 <Pressable
                   style={styles.dangerButton}
@@ -758,7 +758,7 @@ function RecordChoiceScreen({
   ];
   return (
     <View>
-      <Text style={styles.sectionTitle}>何を記録する？</Text>
+      <Text style={styles.sectionTitle}>何を追加する？</Text>
       <View style={styles.card}>
         <Text style={styles.childName}>{child.name}</Text>
         <Text style={styles.muted}>{formatAge(child.birthDate)}</Text>
@@ -986,7 +986,7 @@ function ChildForm(props: {
   return (
     <View>
       <View style={styles.formTitleRow}>
-        <Text style={styles.sectionTitle}>{props.profileOnly ? (props.child ? '子供の情報を編集' : '子供を追加') : '記録を追加'}</Text>
+        <Text style={styles.sectionTitle}>{props.profileOnly ? (props.child ? '子供の情報を編集' : '子供を追加') : '情報を追加'}</Text>
         {props.child && !props.profileOnly ? (
           <Pressable style={styles.headerEditButton} onPress={() => setShowProfile((value) => !value)}>
             <Text style={styles.headerEditText}>子供の情報を編集</Text>

@@ -388,7 +388,7 @@
         app.innerHTML = `<div class="topline"><h2>${editing ? "情報を追加" : "子供を追加"}</h2>${editing ? `<button type="button" class="secondary" data-action="toggle-profile">子供の情報を編集</button>` : ""}</div>
         <form id="childForm">
           ${showProfile ? `<section class="card">${field("名前", "name", child.name || "", "例: はる")}${dateSelect("birth", "生年月日（任意）", child.birthDate || "")}<strong>性別</strong><div class="radio-row">${genders.map(([v, l]) => `<label><input type="radio" name="gender" value="${v}" ${(child.gender || "unspecified") === v ? "checked" : ""}>${l}</label>`).join("")}</div></section>` : `<input type="hidden" name="name" value="${esc(child.name || "")}"><input type="hidden" name="gender" value="${child.gender || "unspecified"}"><section class="card"><h3>${esc(child.name || "")}</h3><p class="muted">${age(child.birthDate)} ・ ${label(genders, child.gender || "unspecified")}</p></section>`}
-          ${!editing || profileOpen || recordChoice === "growth" ? `<section class="card"><h3>身長・体重</h3><strong>記録日</strong><div class="radio-row"><label><input type="radio" name="recordDateMode" value="today" checked>今日（${today()}）</label><label><input type="radio" name="recordDateMode" value="custom">日付を選ぶ</label></div>${dateSelect("record", "任意の日付", today())}${field("身長 cm（任意）", "heightCm", "", "例: 123", "number")}${field("体重 kg（任意）", "weightKg", "", "例: 32", "number")}</section>` : ""}
+          ${!editing || profileOpen || recordChoice === "growth" ? `<section class="card"><h3>身長・体重</h3><strong>記録日</strong><div class="radio-row"><label><input type="radio" name="recordDateMode" value="today" checked>今日（${today()}）</label><label><input type="radio" name="recordDateMode" value="custom">日付を選ぶ</label></div><div data-record-date-fields hidden>${dateSelect("record", "任意の日付", today())}</div>${field("身長 cm（任意）", "heightCm", "", "例: 123", "number")}${field("体重 kg（任意）", "weightKg", "", "例: 32", "number")}</section>` : ""}
           ${editing && recordChoice && recordChoice !== "growth" ? singleSizeEditor(recordChoice) : ""}
           <div class="row"><button type="button" class="secondary" data-action="home">戻る</button><button class="primary">保存</button></div>
         </form>`;
@@ -505,6 +505,10 @@
         render();
       });
       app.addEventListener("change", (event) => {
+        if (event.target?.name === "recordDateMode") {
+          const fields = document.querySelector("[data-record-date-fields]");
+          if (fields) fields.hidden = event.target.value !== "custom";
+        }
         if (event.target?.dataset?.action === "import") {
           importBackup(event.target.files?.[0]);
           event.target.value = "";

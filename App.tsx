@@ -918,6 +918,26 @@ function ChildForm(props: {
     normalizeSizeRecords(props.child?.sockRecords),
   );
   const [fitPreference, setFitPreference] = useState<FitPreference>(props.child?.fitPreference ?? 'just');
+  const brandOptions = (() => {
+    if (!props.recordChoice || props.recordChoice === 'growth') return [];
+    const names = new Set<string>();
+    props.brands
+      .filter((brand) => brand.categories.includes(props.recordChoice as SizeCategoryKey))
+      .forEach((brand) => {
+        if (brand.name.trim()) names.add(brand.name.trim());
+      });
+    const recordsByCategory: Record<SizeCategoryKey, SizeRecord[]> = {
+      underwearRecords,
+      topsRecords,
+      bottomsRecords,
+      sockRecords,
+      shoeRecords,
+    };
+    recordsByCategory[props.recordChoice as SizeCategoryKey].forEach((record) => {
+      if (record.brand?.trim()) names.add(record.brand.trim());
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b, 'ja'));
+  })();
 
   const existingRecords = sortedGrowthRecords(props.child ?? ({} as Child));
 
@@ -1067,13 +1087,11 @@ function ChildForm(props: {
           onChange={setSizeValue}
           placeholder="サイズを選択"
         />
-        {props.brands.filter((brand) => brand.categories.includes(props.recordChoice as SizeCategoryKey)).length > 0 ? (
+        {brandOptions.length > 0 ? (
           <SelectBox
-            label="登録ブランド（任意）"
+            label="登録・記録済みブランド（任意）"
             value={selectedBrand}
-            options={props.brands
-              .filter((brand) => brand.categories.includes(props.recordChoice as SizeCategoryKey))
-              .map((brand) => brand.name)}
+            options={brandOptions}
             onChange={setSelectedBrand}
             placeholder="選択しない"
           />

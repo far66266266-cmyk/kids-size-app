@@ -327,14 +327,28 @@
       function field(title, name, value = "", placeholder = "", type = "text") {
         return `<label>${title}<input name="${name}" type="${type}" value="${esc(value)}" placeholder="${esc(placeholder)}"></label>`;
       }
+      function brandOptionsFor(category) {
+        const names = new Set();
+        readBrands()
+          .filter((brand) => (brand.categories || []).includes(category))
+          .forEach((brand) => {
+            if (brand.name?.trim()) names.add(brand.name.trim());
+          });
+        readChildren().forEach((child) => {
+          (child[category] || []).forEach((record) => {
+            if (record.brand?.trim()) names.add(record.brand.trim());
+          });
+        });
+        return Array.from(names).sort((a, b) => a.localeCompare(b, "ja"));
+      }
       function singleSizeEditor(choice) {
         const category = sizeCategories.find(([field]) => field === choice) || sizeCategories[1];
-        const brands = readBrands().filter((brand) => (brand.categories || []).includes(category[0]));
+        const brands = brandOptionsFor(category[0]);
         return `<section class="card">
           <h3>${category[1]}を記録</h3>
           <input type="hidden" name="sizeCategory" value="${category[0]}">
           <label>サイズ<select name="sizeValue"><option value="">サイズを選択</option>${optionsFor(category[0]).map((size) => `<option value="${size}">${size}</option>`).join("")}</select></label>
-          ${brands.length ? `<label>登録ブランド（任意）<select name="selectedBrand"><option value="">選択しない</option>${brands.map((brand) => `<option value="${esc(brand.name)}">${esc(brand.name)}</option>`).join("")}</select></label>` : ""}
+          ${brands.length ? `<label>登録・記録済みブランド（任意）<select name="selectedBrand"><option value="">選択しない</option>${brands.map((brand) => `<option value="${esc(brand)}">${esc(brand)}</option>`).join("")}</select></label>` : ""}
           ${field("メーカー・ブランドを自由入力（任意）", "sizeBrand", "", "例: UNIQLO")}
           <label>着用感<select name="sizeFit">${fits.map(([v, l]) => `<option value="${v}" ${v === "just" ? "selected" : ""}>${l}</option>`).join("")}</select></label>
         </section>`;

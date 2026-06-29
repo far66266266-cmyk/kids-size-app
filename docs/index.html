@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>これ着れる？</title>
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --panel: #ffffff;
+        --ink: #172033;
+        --muted: #667085;
+        --line: #e4e7ec;
+        --soft: #f1f5f9;
+        --accent: #0f766e;
+        --accent-dark: #115e59;
+        --warn: #b42318;
+        --blue: #2563eb;
+        --green: #16a34a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main {
+        width: min(920px, 100%);
+        margin: 0 auto;
+        padding: 18px 16px 44px;
+      }
+      .app-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { margin-bottom: 2px; font-size: 30px; letter-spacing: 0; }
+      h2 { margin-bottom: 14px; font-size: 22px; }
+      h3 { margin-bottom: 8px; font-size: 17px; }
+      p { line-height: 1.65; }
+      button, input, select { font: inherit; }
+      input, select {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 12px;
+        border: 1px solid #cfd6e0;
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+      }
+      label {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 12px;
+        font-weight: 700;
+        color: #344054;
+      }
+      .subtitle, .muted { color: var(--muted); }
+      .muted { font-size: 14px; }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; }
+      .row > * { flex: 1 1 150px; }
+      .card {
+        margin-bottom: 12px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+      }
+      .topline {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .current {
+        margin: 10px 0 12px;
+        font-size: 18px;
+        font-weight: 800;
+      }
+      .size-row {
+        display: grid;
+        grid-template-columns: 82px 1fr;
+        gap: 12px;
+        padding: 8px 0;
+        border-top: 1px solid var(--line);
+      }
+      .size-row.last { margin-bottom: 14px; }
+      .primary, .secondary, .danger, .small {
+        min-height: 42px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .primary { border: 0; background: var(--accent); color: #fff; }
+      .primary:hover { background: var(--accent-dark); }
+      .secondary { border: 1px solid #b8c2cc; background: #fff; color: #344054; }
+      .danger { border: 0; background: #fee4e2; color: var(--warn); }
+      .small { border: 0; background: #e0f2fe; color: #075985; }
+      .radio-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 8px 0 12px;
+      }
+      .radio-row label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        padding: 6px 9px;
+        border: 1px solid #cfd6e0;
+        border-radius: 8px;
+        background: #fff;
+        color: #344054;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .radio-row input {
+        width: auto;
+        min-height: 0;
+        margin: 0;
+      }
+      .date-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+      .choice-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .choice-grid button {
+        min-height: 58px;
+        border: 1px solid #b8c2cc;
+        background: #fff;
+        color: var(--ink);
+        border-radius: 8px;
+        font-weight: 900;
+      }
+      .line-chart { width: 100%; margin-bottom: 14px; }
+      .line-chart svg { width: 100%; height: 170px; display: block; }
+      .chart-title { font-weight: 900; margin: 8px 0 4px; }
+      .empty {
+        padding: 24px 12px;
+        border: 1px dashed #cfd6e0;
+        border-radius: 8px;
+        color: var(--muted);
+        text-align: center;
+        background: #fff;
+      }
+      @media (max-width: 560px) {
+        .app-header { align-items: flex-start; flex-direction: column; }
+        .topline { flex-direction: column; }
+        .size-row { grid-template-columns: 70px 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="app-header">
+        <div>
+          <h1>これ着れる？</h1>
+          <div class="subtitle">子供の今の体格とサイズ感を記録</div>
+        </div>
+      </header>
+      <div id="app"></div>
+    </main>
+    <script>
+      const childKey = "korekireru.web.children.v3";
+      const brandKey = "korekireru.web.brands.v1";
+      const genders = [["boy", "男の子"], ["girl", "女の子"], ["unspecified", "未選択"]];
+      const fits = [["unwearable", "着れない"], ["small", "小さい"], ["just", "ぴったり"], ["large", "大きい"], ["huge", "ぶかぶか"]];
+      const sizeCategories = [
+        ["underwearRecords", "下着", "例: 120"],
+        ["topsRecords", "トップス", "例: 120"],
+        ["bottomsRecords", "ボトムス", "例: 120"],
+        ["sockRecords", "靴下", "例: 16-18"],
+        ["shoeRecords", "靴", "例: 18.0"],
+      ];
+      const clothingSizes = Array.from({ length: 21 }, (_, i) => String(70 + i * 5));
+      const sockSizes = Array.from({ length: 18 }, (_, i) => String(7 + i));
+      const shoeSizes = Array.from({ length: 27 }, (_, i) => (12 + i * 0.5).toFixed(1));
+      const years = Array.from({ length: 18 }, (_, i) => String(new Date().getFullYear() - i));
+      const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
+      const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
+      const app = document.querySelector("#app");
+      let screen = "home";
+      let editing = null;
+      let viewing = null;
+      let profileOpen = false;
+      let recordChoice = null;
+
+      const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const readChildren = () => JSON.parse(localStorage.getItem(childKey) || "[]");
+      const writeChildren = (value) => localStorage.setItem(childKey, JSON.stringify(value));
+      const readBrands = () => JSON.parse(localStorage.getItem(brandKey) || "[]");
+      const writeBrands = (value) => localStorage.setItem(brandKey, JSON.stringify(value));
+      const today = () => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      };
+      const number = (value) => {
+        const parsed = Number.parseFloat(String(value || ""));
+        return Number.isFinite(parsed) ? parsed : undefined;
+      };
+      const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+      const label = (items, value) => (items.find((item) => item[0] === value) || [value, value])[1];
+      const categoryLabel = (value) => (sizeCategories.find(([field]) => field === value) || [value, value])[1];
+      const parts = (date = "") => {
+        const [y = "", m = "", d = ""] = date.split("-");
+        return [y, m, d];
+      };
+      const dateFrom = (prefix) => {
+        const y = document.querySelector(`[name="${prefix}Year"]`)?.value;
+        const m = document.querySelector(`[name="${prefix}Month"]`)?.value;
+        const d = document.querySelector(`[name="${prefix}Day"]`)?.value;
+        return y && m && d ? `${y}-${m}-${d}` : undefined;
+      };
+      const records = (child) => [...(child.growthRecords || [])].sort((a, b) => new Date(b.measuredAt) - new Date(a.measuredAt));
+      const latest = (child) => records(child).find((r) => r.heightCm || r.weightKg);
+      const age = (birthDate) => {
+        if (!birthDate) return "生年月日未登録";
+        const birth = new Date(birthDate);
+        if (Number.isNaN(birth.getTime())) return "生年月日未登録";
+        const now = new Date();
+        let total = (now.getFullYear() - birth.getFullYear()) * 12 + now.getMonth() - birth.getMonth();
+        if (now.getDate() < birth.getDate()) total -= 1;
+        return total >= 12 ? `${Math.floor(total / 12)}歳${total % 12}か月` : `${total}か月`;
+      };
+      const optionsFor = (category) => category === "shoeRecords" ? shoeSizes : category === "sockRecords" ? sockSizes : clothingSizes;
+      const sizeSortValue = (size) => {
+        const match = String(size || "").match(/\d+(?:\.\d+)?/);
+        return match ? Number.parseFloat(match[0]) : Number.MAX_SAFE_INTEGER;
+      };
+      const sortSizes = (items) => {
+        const seen = new Set();
+        return [...(items || [])]
+          .filter((item) => item.size)
+          .filter((item) => {
+            const key = `${item.size.trim()}__${item.fit}__${(item.brand || "").trim()}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
+          .sort((a, b) => sizeSortValue(a.size) - sizeSortValue(b.size) || String(a.size).localeCompare(String(b.size), "ja") || label(fits, a.fit).localeCompare(label(fits, b.fit), "ja"));
+      };
+      const sizeRecords = (child, field, legacy) => sortSizes(child[field]?.length ? child[field] : legacy ? [{ id: "legacy", size: legacy, fit: "just" }] : []);
+      const groupedSizeLines = (items) => {
+        const grouped = new Map();
+        items.forEach((item) => {
+          const key = item.size.trim();
+          const fitMap = grouped.get(key) || new Map();
+          const brands = fitMap.get(item.fit) || [];
+          if (item.brand && !brands.includes(item.brand.trim())) brands.push(item.brand.trim());
+          fitMap.set(item.fit, brands);
+          grouped.set(key, fitMap);
+        });
+        return Array.from(grouped.entries()).map(([size, fitMap]) => ({
+          size,
+          detail: Array.from(fitMap.entries()).map(([fit, brands]) => `${label(fits, fit)}${brands.length ? `（${brands.map(esc).join("、")}）` : ""}`).join("、"),
+        }));
+      };
+      const sizeSummary = (title, items, last = false) => `<div class="size-row ${last ? "last" : ""}"><strong>${title}</strong><div>${items.length ? groupedSizeLines(items).slice(0, 3).map((item) => `<div>${esc(item.size)} ${item.detail}</div>`).join("") : `<span class="muted">未記録</span>`}</div></div>`;
+      const currentText = (child) => {
+        const l = latest(child);
+        return l ? `身長 ${l.heightCm ? `${l.heightCm}cm` : "-"}／体重 ${l.weightKg ? `${l.weightKg}kg` : "-"}` : "身長・体重の記録はまだありません";
+      };
+      function select(name, options, value = "", suffix = "") {
+        return `<select name="${name}"><option value="">選択</option>${options.map((o) => `<option value="${o}" ${String(value) === String(o) ? "selected" : ""}>${o}${suffix}</option>`).join("")}</select>`;
+      }
+      function dateSelect(prefix, title, value) {
+        const [y, m, d] = parts(value);
+        return `<label>${title}<div class="date-row">${select(`${prefix}Year`, years, y, "年")}${select(`${prefix}Month`, months, m, "月")}${select(`${prefix}Day`, days, d, "日")}</div></label>`;
+      }
+      function field(title, name, value = "", placeholder = "", type = "text") {
+        return `<label>${title}<input name="${name}" type="${type}" value="${esc(value)}" placeholder="${esc(placeholder)}"></label>`;
+      }
+      function singleSizeEditor(choice) {
+        const category = sizeCategories.find(([field]) => field === choice) || sizeCategories[1];
+        const brands = readBrands().filter((brand) => (brand.categories || []).includes(category[0]));
+        return `<section class="card">
+          <h3>${category[1]}を記録</h3>
+          <input type="hidden" name="sizeCategory" value="${category[0]}">
+          <label>サイズ<select name="sizeValue"><option value="">サイズを選択</option>${optionsFor(category[0]).map((size) => `<option value="${size}">${size}</option>`).join("")}</select></label>
+          ${brands.length ? `<label>登録ブランド（任意）<select name="selectedBrand"><option value="">選択しない</option>${brands.map((brand) => `<option value="${esc(brand.name)}">${esc(brand.name)}</option>`).join("")}</select></label>` : ""}
+          ${field("メーカー・ブランドを自由入力（任意）", "sizeBrand", "", "例: UNIQLO")}
+          <label>着用感<select name="sizeFit">${fits.map(([v, l]) => `<option value="${v}" ${v === "just" ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        </section>`;
+      }
+      function lineChart(title, color, unit, growth, getter) {
+        const values = growth.map((r) => ({ record: r, value: getter(r) })).filter((p) => p.value);
+        if (!values.length) return `<section class="card"><h3>${title}</h3><p class="muted">まだ記録がありません。</p></section>`;
+        const max = Math.max(...values.map((p) => p.value), 1);
+        const min = Math.min(...values.map((p) => p.value));
+        const span = Math.max(max - min, 1);
+        const width = 320;
+        const height = 120;
+        const left = 34;
+        const points = values.map((p, i) => {
+          const x = values.length === 1 ? left + width / 2 : left + (i / (values.length - 1)) * width;
+          const y = height - ((p.value - min) / span) * (height - 20) - 10;
+          return { ...p, x, y };
+        });
+        return `<section class="card line-chart"><div class="chart-title" style="color:${color}">${title}</div><svg viewBox="0 0 ${width + left + 8} ${height + 30}" preserveAspectRatio="none"><line x1="${left}" y1="0" x2="${left}" y2="${height}" stroke="#cfd6e0"></line><line x1="${left}" y1="${height}" x2="${width + left}" y2="${height}" stroke="#cfd6e0"></line><text x="0" y="10" font-size="11" fill="${color}">${Math.round(max)}${unit}</text><text x="0" y="${height - 2}" font-size="11" fill="#667085">${Math.round(min)}${unit}</text><polyline fill="none" stroke="${color}" stroke-width="4" points="${points.map((p) => `${p.x},${p.y}`).join(" ")}"></polyline>${points.map((p) => `<circle cx="${p.x}" cy="${p.y}" r="5" fill="${color}"></circle><text x="${p.x}" y="${height + 20}" text-anchor="middle" font-size="12" fill="#667085">${p.record.measuredAt.slice(5).replace("-", "/")}</text>`).join("")}</svg><p class="muted">${values.map((p) => `${p.record.measuredAt.slice(5).replace("-", "/")} ${p.value}${unit}`).join("　")}</p></section>`;
+      }
+      function renderHome() {
+        const children = readChildren();
+        app.innerHTML = `<div class="toolbar"><button class="primary" data-action="add">子供を追加</button><button class="secondary" data-action="brand">ブランドを追加</button></div><h2>登録済みの子供</h2>${children.length ? children.map((child) => `<section class="card">
+          <div class="topline"><h3>${esc(child.name)} <span class="muted">${age(child.birthDate)} ・ ${label(genders, child.gender || "unspecified")}</span></h3><button class="secondary" data-action="profile" data-id="${child.id}">子供の情報を編集</button></div>
+          <p class="current">${currentText(child)}</p>
+          ${sizeSummary("下着", sizeRecords(child, "underwearRecords"))}
+          ${sizeSummary("トップス", sizeRecords(child, "topsRecords", child.topsSize))}
+          ${sizeSummary("ボトムス", sizeRecords(child, "bottomsRecords", child.bottomsSize))}
+          ${sizeSummary("靴下", sizeRecords(child, "sockRecords"))}
+          ${sizeSummary("靴", sizeRecords(child, "shoeRecords", child.shoeSize), true)}
+          <div class="row"><button class="secondary" data-action="view" data-id="${child.id}">記録を見る</button><button class="small" data-action="edit" data-id="${child.id}">記録を追加</button><button class="danger" data-action="delete" data-id="${child.id}">削除</button></div>
+        </section>`).join("") : `<div class="empty">まずは子供情報を登録してください。</div>`}`;
+      }
+      function renderForm() {
+        const child = editing || {};
+        const showProfile = !editing || profileOpen;
+        app.innerHTML = `<div class="topline"><h2>${editing ? "記録を追加" : "子供を追加"}</h2>${editing ? `<button type="button" class="secondary" data-action="toggle-profile">子供の情報を編集</button>` : ""}</div>
+        <form id="childForm">
+          ${showProfile ? `<section class="card">${field("名前", "name", child.name || "", "例: はる")}${dateSelect("birth", "生年月日（任意）", child.birthDate || "")}<strong>性別</strong><div class="radio-row">${genders.map(([v, l]) => `<label><input type="radio" name="gender" value="${v}" ${(child.gender || "unspecified") === v ? "checked" : ""}>${l}</label>`).join("")}</div></section>` : `<input type="hidden" name="name" value="${esc(child.name || "")}"><input type="hidden" name="gender" value="${child.gender || "unspecified"}"><section class="card"><h3>${esc(child.name || "")}</h3><p class="muted">${age(child.birthDate)} ・ ${label(genders, child.gender || "unspecified")}</p></section>`}
+          ${!editing || profileOpen || recordChoice === "growth" ? `<section class="card"><h3>身長・体重</h3><strong>記録日</strong><div class="radio-row"><label><input type="radio" name="recordDateMode" value="today" checked>今日（${today()}）</label><label><input type="radio" name="recordDateMode" value="custom">日付を選ぶ</label></div>${dateSelect("record", "任意の日付", today())}${field("身長 cm（任意）", "heightCm", "", "例: 123", "number")}${field("体重 kg（任意）", "weightKg", "", "例: 32", "number")}</section>` : ""}
+          ${editing && recordChoice && recordChoice !== "growth" ? singleSizeEditor(recordChoice) : ""}
+          <div class="row"><button type="button" class="secondary" data-action="home">戻る</button><button class="primary">保存</button></div>
+        </form>`;
+      }
+      function renderBrandForm() {
+        const brands = readBrands();
+        app.innerHTML = `<h2>ブランドを追加</h2>
+        <form id="brandForm">
+          ${field("ブランド名", "brandName", "", "例: UNIQLO")}
+          <strong>使うカテゴリ</strong>
+          <div class="radio-row">${sizeCategories.map(([value, title]) => `<label><input type="checkbox" name="brandCategory" value="${value}">${title}</label>`).join("")}</div>
+          ${brands.length ? `<section class="card"><h3>登録済みブランド</h3>${brands.map((brand) => `<p>${esc(brand.name)} / ${(brand.categories || []).map(categoryLabel).join("・")}</p>`).join("")}</section>` : ""}
+          <div class="row"><button type="button" class="secondary" data-action="home">戻る</button><button class="primary">保存</button></div>
+        </form>`;
+      }
+      function renderChoose() {
+        const choices = [["growth", "身長／体重"], ...sizeCategories.map(([field, title]) => [field, title])];
+        app.innerHTML = `<h2>何を記録する？</h2><section class="card"><h3>${esc(editing?.name || "")}</h3><p class="muted">${age(editing?.birthDate)} ・ ${label(genders, editing?.gender || "unspecified")}</p></section><div class="choice-grid">${choices.map(([value, title]) => `<button data-action="choose" data-choice="${value}">${title}</button>`).join("")}</div><p><button class="secondary" data-action="home">戻る</button></p>`;
+      }
+      function renderRecords() {
+        const child = viewing;
+        const growth = records(child);
+        const graph = [...growth].reverse();
+        const groups = [
+          ["下着", sizeRecords(child, "underwearRecords")],
+          ["トップス", sizeRecords(child, "topsRecords", child.topsSize)],
+          ["ボトムス", sizeRecords(child, "bottomsRecords", child.bottomsSize)],
+          ["靴下", sizeRecords(child, "sockRecords")],
+          ["靴", sizeRecords(child, "shoeRecords", child.shoeSize)],
+        ];
+        app.innerHTML = `<h2>${esc(child.name)}の記録</h2><p><button class="secondary" data-action="home">ホームへ戻る</button></p>
+          <section class="card"><h3>身長・体重</h3>${growth.length ? growth.map((r) => `<p>${r.measuredAt} ${r.heightCm ? `${r.heightCm}cm` : "身長 -"} ${r.weightKg ? `${r.weightKg}kg` : "体重 -"}</p>`).join("") : `<p class="muted">まだ記録がありません。</p>`}</section>
+          ${graph.length ? `${lineChart("身長のグラフ", "#16a34a", "cm", graph, (r) => r.heightCm)}${lineChart("体重のグラフ", "#2563eb", "kg", graph, (r) => r.weightKg)}` : ""}
+          ${groups.map(([title, items]) => `<section class="card"><h3>${title}サイズ感</h3>${items.length ? groupedSizeLines(items).map((item) => `<p>${esc(item.size)} ${item.detail}</p>`).join("") : `<p class="muted">まだ記録がありません。</p>`}</section>`).join("")}`;
+      }
+      function render() {
+        if (screen === "home") renderHome();
+        if (screen === "brand") renderBrandForm();
+        if (screen === "choose") renderChoose();
+        if (screen === "form") renderForm();
+        if (screen === "records") renderRecords();
+      }
+      app.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (event.target.id === "brandForm") {
+          const data = new FormData(event.target);
+          const name = String(data.get("brandName") || "").trim();
+          const categories = data.getAll("brandCategory");
+          if (!name || !categories.length) return alert("ブランド名とカテゴリを選んでください。");
+          writeBrands([{ id: uid(), name, categories, createdAt: new Date().toISOString() }, ...readBrands()]);
+          screen = "home";
+          render();
+          return;
+        }
+        const data = Object.fromEntries(new FormData(event.target));
+        if (!data.name) return alert("名前は必須です。");
+        const growthRecords = [...(editing?.growthRecords || [])];
+        const h = number(data.heightCm);
+        const w = number(data.weightKg);
+        const measuredAt = data.recordDateMode === "custom" ? dateFrom("record") : today();
+        if ((!editing || profileOpen || recordChoice === "growth") && (h || w)) {
+          if (!measuredAt) return alert("記録日を選んでください。");
+          growthRecords.push({ id: uid(), measuredAt, heightCm: h, weightKg: w });
+        }
+        const child = {
+          ...(editing || {}),
+          id: editing?.id || uid(),
+          name: String(data.name).trim(),
+          birthDate: (!editing || profileOpen) ? dateFrom("birth") : editing?.birthDate,
+          gender: data.gender || editing?.gender || "unspecified",
+          growthRecords,
+          underwearRecords: sortSizes([...(editing?.underwearRecords || [])]),
+          topsRecords: sortSizes([...(editing?.topsRecords || [])]),
+          bottomsRecords: sortSizes([...(editing?.bottomsRecords || [])]),
+          sockRecords: sortSizes([...(editing?.sockRecords || [])]),
+          shoeRecords: sortSizes([...(editing?.shoeRecords || [])]),
+          topsSize: editing?.topsSize || "",
+          bottomsSize: editing?.bottomsSize || "",
+          shoeSize: editing?.shoeSize || "",
+          fitPreference: "just",
+          createdAt: editing?.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        if (editing && recordChoice && recordChoice !== "growth" && data.sizeValue) {
+          child[data.sizeCategory].push({ id: uid(), size: String(data.sizeValue).trim(), fit: data.sizeFit || "just", brand: String(data.sizeBrand || "").trim() || data.selectedBrand || undefined });
+          child[data.sizeCategory] = sortSizes(child[data.sizeCategory]);
+        }
+        child.topsSize = child.topsRecords[0]?.size || "";
+        child.bottomsSize = child.bottomsRecords[0]?.size || "";
+        child.shoeSize = child.shoeRecords[0]?.size || "";
+        const children = readChildren();
+        writeChildren(editing ? children.map((item) => item.id === child.id ? child : item) : [child, ...children]);
+        editing = null;
+        profileOpen = false;
+        recordChoice = null;
+        screen = "home";
+        render();
+      });
+      app.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-action]");
+        if (!button) return;
+        const action = button.dataset.action;
+        if (action === "home") screen = "home";
+        if (action === "brand") screen = "brand";
+        if (action === "add") { editing = null; profileOpen = true; recordChoice = null; screen = "form"; }
+        if (action === "edit") { editing = readChildren().find((c) => c.id === button.dataset.id); profileOpen = false; recordChoice = null; screen = "choose"; }
+        if (action === "profile") { editing = readChildren().find((c) => c.id === button.dataset.id); profileOpen = true; recordChoice = null; screen = "form"; }
+        if (action === "toggle-profile") profileOpen = !profileOpen;
+        if (action === "choose") { recordChoice = button.dataset.choice; profileOpen = false; screen = "form"; }
+        if (action === "view") { viewing = readChildren().find((c) => c.id === button.dataset.id); screen = "records"; }
+        if (action === "delete" && confirm("削除しますか？")) writeChildren(readChildren().filter((c) => c.id !== button.dataset.id));
+        render();
+      });
+      render();
+    </script>
+  </body>
+</html>

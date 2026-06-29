@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "これ着れる？",
+    "slug": "kore-kireru",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#fff7ed"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.korekireru"
+    },
+    "android": {
+      "package": "com.example.korekireru"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+node_modules/
+.expo/
+.expo-home/
+.git-empty-backup/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store

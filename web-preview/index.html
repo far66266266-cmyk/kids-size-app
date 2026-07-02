@@ -160,7 +160,24 @@
         text-align: center;
         background: #fff;
       }
+      .record-line {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding: 8px 0;
+        border-top: 1px solid var(--line);
+      }
+      .record-actions { display: flex; gap: 6px; }
+      .record-actions .small, .record-actions .danger {
+        min-height: 36px;
+        padding: 6px 10px;
+        font-size: 13px;
+      }
       @media (max-width: 560px) {
+        main { padding: 14px 12px 40px; }
+        .card { padding: 14px 12px; }
         .app-header { align-items: flex-start; flex-direction: column; }
         .topline { flex-direction: column; }
         .size-row { grid-template-columns: 70px 1fr; }
@@ -201,6 +218,8 @@
       let viewing = null;
       let profileOpen = false;
       let recordChoice = null;
+      let recordEdit = null;
+      let brandEditing = null;
 
       const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       const readChildren = () => JSON.parse(localStorage.getItem(childKey) || "[]");
@@ -235,6 +254,7 @@
               alert("バックアップファイルの形式が違います。");
               return;
             }
+            if ((readChildren().length || readBrands().length) && confirm("念のため、今このブラウザに入っているデータを先にバックアップとして書き出しますか？")) downloadBackup();
             if (!confirm("今このブラウザに入っているデータを、バックアップの内容で置き換えます。よろしいですか？")) return;
             writeChildren(parsed.children);
             writeBrands(parsed.brands);
@@ -395,34 +415,61 @@
       }
       function renderBrandForm() {
         const brands = readBrands();
-        app.innerHTML = `<h2>ブランドを追加</h2>
+        const brand = brandEditing || {};
+        app.innerHTML = `<h2>${brandEditing ? "ブランドを編集" : "ブランドを追加"}</h2>
         <form id="brandForm">
-          ${field("ブランド名", "brandName", "", "例: UNIQLO")}
+          ${field("ブランド名", "brandName", brand.name || "", "例: UNIQLO")}
           <strong>使うカテゴリ</strong>
-          <div class="radio-row">${sizeCategories.map(([value, title]) => `<label><input type="checkbox" name="brandCategory" value="${value}">${title}</label>`).join("")}</div>
-          ${brands.length ? `<section class="card"><h3>登録済みブランド</h3>${brands.map((brand) => `<p>${esc(brand.name)} / ${(brand.categories || []).map(categoryLabel).join("・")}</p>`).join("")}</section>` : ""}
-          <div class="row"><button type="button" class="secondary" data-action="home">戻る</button><button class="primary">保存</button></div>
+          <div class="radio-row">${sizeCategories.map(([value, title]) => `<label><input type="checkbox" name="brandCategory" value="${value}" ${(brand.categories || []).includes(value) ? "checked" : ""}>${title}</label>`).join("")}</div>
+          <div class="row"><button type="button" class="secondary" data-action="home">戻る</button><button class="primary">${brandEditing ? "変更を保存" : "保存"}</button></div>
+          ${brands.length ? `<section class="card"><h3>登録済みブランド</h3>${brands.map((item) => `<div class="record-line"><span>${esc(item.name)} / ${(item.categories || []).map(categoryLabel).join("・")}</span><span class="record-actions"><button type="button" class="small" data-action="brand-edit" data-id="${item.id}">編集</button><button type="button" class="danger" data-action="brand-delete" data-id="${item.id}">削除</button></span></div>`).join("")}</section>` : ""}
         </form>`;
       }
       function renderChoose() {
         const choices = [["growth", "身長／体重"], ...sizeCategories.map(([field, title]) => [field, title])];
         app.innerHTML = `<h2>何を追加する？</h2><section class="card"><h3>${esc(editing?.name || "")}</h3><p class="muted">${age(editing?.birthDate)} ・ ${label(genders, editing?.gender || "unspecified")}</p></section><div class="choice-grid">${choices.map(([value, title]) => `<button data-action="choose" data-choice="${value}">${title}</button>`).join("")}</div><p><button class="secondary" data-action="home">戻る</button></p>`;
       }
+      const legacyProps = { topsRecords: "topsSize", bottomsRecords: "bottomsSize", shoeRecords: "shoeSize" };
+      const saveViewing = (child) => {
+        writeChildren(readChildren().map((item) => item.id === child.id ? child : item));
+        viewing = child;
+      };
+      const syncLegacy = (child) => {
+        Object.entries(legacyProps).forEach(([recordsField, legacyField]) => {
+          if (child[recordsField]?.length) child[legacyField] = child[recordsField][0].size;
+        });
+      };
+      function growthEditForm(r) {
+        return `<section class="card" style="background:var(--soft);">
+          ${dateSelect("editRecord", "記録日", r.measuredAt)}
+          ${field("身長 cm（任意）", "editHeightCm", r.heightCm ?? "", "例: 123", "number")}
+          ${field("体重 kg（任意）", "editWeightKg", r.weightKg ?? "", "例: 32", "number")}
+          <div class="row"><button class="secondary" data-action="cancel-edit">やめる</button><button class="primary" data-action="save-growth" data-id="${r.id}">保存</button></div>
+        </section>`;
+      }
+      function sizeEditForm(category, r) {
+        return `<section class="card" style="background:var(--soft);">
+          <label>サイズ${select("editSizeValue", optionsFor(category), r.size)}</label>
+          <label>着用感<select name="editSizeFit">${fits.map(([v, l]) => `<option value="${v}" ${v === (r.fit || "just") ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+          ${field("メーカー・ブランド（任意）", "editSizeBrand", r.brand || "", "例: UNIQLO")}
+          <div class="row"><button class="secondary" data-action="cancel-edit">やめる</button><button class="primary" data-action="save-size" data-category="${category}" data-id="${r.id}">保存</button></div>
+        </section>`;
+      }
       function renderRecords() {
         const child = viewing;
         const growth = records(child);
         const graph = [...growth].reverse();
         const groups = [
-          ["下着", sizeRecords(child, "underwearRecords")],
-          ["トップス", sizeRecords(child, "topsRecords", child.topsSize)],
-          ["ボトムス", sizeRecords(child, "bottomsRecords", child.bottomsSize)],
-          ["靴下", sizeRecords(child, "sockRecords")],
-          ["靴", sizeRecords(child, "shoeRecords", child.shoeSize)],
+          ["underwearRecords", "下着", sizeRecords(child, "underwearRecords")],
+          ["topsRecords", "トップス", sizeRecords(child, "topsRecords", child.topsSize)],
+          ["bottomsRecords", "ボトムス", sizeRecords(child, "bottomsRecords", child.bottomsSize)],
+          ["sockRecords", "靴下", sizeRecords(child, "sockRecords")],
+          ["shoeRecords", "靴", sizeRecords(child, "shoeRecords", child.shoeSize)],
         ];
         app.innerHTML = `<h2>${esc(child.name)}の記録</h2><p><button class="secondary" data-action="home">ホームへ戻る</button></p>
-          <section class="card"><h3>身長・体重</h3>${growth.length ? growth.map((r) => `<p>${r.measuredAt} ${r.heightCm ? `${r.heightCm}cm` : "身長 -"} ${r.weightKg ? `${r.weightKg}kg` : "体重 -"}</p>`).join("") : `<p class="muted">まだ記録がありません。</p>`}</section>
+          <section class="card"><h3>身長・体重</h3>${growth.length ? growth.map((r) => recordEdit?.type === "growth" && recordEdit.id === r.id ? growthEditForm(r) : `<div class="record-line"><span>${r.measuredAt} ${r.heightCm ? `${r.heightCm}cm` : "身長 -"} ${r.weightKg ? `${r.weightKg}kg` : "体重 -"}</span><span class="record-actions"><button class="small" data-action="edit-growth" data-id="${r.id}">編集</button><button class="danger" data-action="delete-growth" data-id="${r.id}">削除</button></span></div>`).join("") : `<p class="muted">まだ記録がありません。</p>`}</section>
           ${graph.length ? `${lineChart("身長のグラフ", "#16a34a", "cm", graph, (r) => r.heightCm)}${lineChart("体重のグラフ", "#2563eb", "kg", graph, (r) => r.weightKg)}` : ""}
-          ${groups.map(([title, items]) => `<section class="card"><h3>${title}サイズ感</h3>${items.length ? groupedSizeLines(items).map((item) => `<p>${esc(item.size)} ${item.detail}</p>`).join("") : `<p class="muted">まだ記録がありません。</p>`}</section>`).join("")}`;
+          ${groups.map(([category, title, items]) => `<section class="card"><h3>${title}サイズ感</h3>${items.length ? items.map((r) => recordEdit?.type === category && recordEdit.id === r.id ? sizeEditForm(category, r) : `<div class="record-line"><span>${esc(r.size)} ${label(fits, r.fit)}${r.brand ? `（${esc(r.brand)}）` : ""}</span><span class="record-actions"><button class="small" data-action="edit-size" data-category="${category}" data-id="${r.id}">編集</button><button class="danger" data-action="delete-size" data-category="${category}" data-id="${r.id}">削除</button></span></div>`).join("") : `<p class="muted">まだ記録がありません。</p>`}</section>`).join("")}`;
       }
       function render() {
         if (screen === "home") renderHome();
@@ -438,7 +485,12 @@
           const name = String(data.get("brandName") || "").trim();
           const categories = data.getAll("brandCategory");
           if (!name || !categories.length) return alert("ブランド名とカテゴリを選んでください。");
-          writeBrands([{ id: uid(), name, categories, createdAt: new Date().toISOString() }, ...readBrands()]);
+          if (brandEditing) {
+            writeBrands(readBrands().map((item) => item.id === brandEditing.id ? { ...item, name, categories } : item));
+          } else {
+            writeBrands([{ id: uid(), name, categories, createdAt: new Date().toISOString() }, ...readBrands()]);
+          }
+          brandEditing = null;
           screen = "home";
           render();
           return;
@@ -492,16 +544,62 @@
         if (!button) return;
         const action = button.dataset.action;
         if (action === "import") return;
-        if (action === "home") screen = "home";
-        if (action === "brand") screen = "brand";
+        if (action === "home") { screen = "home"; recordEdit = null; brandEditing = null; }
+        if (action === "brand") { screen = "brand"; brandEditing = null; }
         if (action === "export") downloadBackup();
         if (action === "add") { editing = null; profileOpen = true; recordChoice = null; screen = "form"; }
         if (action === "edit") { editing = readChildren().find((c) => c.id === button.dataset.id); profileOpen = false; recordChoice = null; screen = "choose"; }
         if (action === "profile") { editing = readChildren().find((c) => c.id === button.dataset.id); profileOpen = true; recordChoice = null; screen = "form"; }
         if (action === "toggle-profile") profileOpen = !profileOpen;
         if (action === "choose") { recordChoice = button.dataset.choice; profileOpen = false; screen = "form"; }
-        if (action === "view") { viewing = readChildren().find((c) => c.id === button.dataset.id); screen = "records"; }
+        if (action === "view") { viewing = readChildren().find((c) => c.id === button.dataset.id); recordEdit = null; screen = "records"; }
         if (action === "delete" && confirm("削除しますか？")) writeChildren(readChildren().filter((c) => c.id !== button.dataset.id));
+        if (action === "brand-edit") brandEditing = readBrands().find((item) => item.id === button.dataset.id) || null;
+        if (action === "brand-delete" && confirm("このブランドを削除しますか？（記録済みのサイズデータは消えません）")) writeBrands(readBrands().filter((item) => item.id !== button.dataset.id));
+        if (action === "edit-growth") recordEdit = { type: "growth", id: button.dataset.id };
+        if (action === "edit-size") recordEdit = { type: button.dataset.category, id: button.dataset.id };
+        if (action === "cancel-edit") recordEdit = null;
+        if (action === "delete-growth" && confirm("この身長・体重の記録を削除しますか？")) {
+          saveViewing({ ...viewing, growthRecords: (viewing.growthRecords || []).filter((r) => r.id !== button.dataset.id) });
+        }
+        if (action === "save-growth") {
+          const measuredAt = dateFrom("editRecord");
+          const h = number(document.querySelector('[name="editHeightCm"]')?.value);
+          const w = number(document.querySelector('[name="editWeightKg"]')?.value);
+          if (!measuredAt) return alert("記録日を選んでください。");
+          if (!h && !w) return alert("身長か体重のどちらかは入力してください。");
+          recordEdit = null;
+          saveViewing({ ...viewing, growthRecords: (viewing.growthRecords || []).map((r) => r.id === button.dataset.id ? { ...r, measuredAt, heightCm: h, weightKg: w } : r) });
+        }
+        if (action === "delete-size" && confirm("この記録を削除しますか？")) {
+          const category = button.dataset.category;
+          const child = { ...viewing };
+          if (button.dataset.id === "legacy") {
+            if (legacyProps[category]) child[legacyProps[category]] = "";
+          } else {
+            child[category] = (child[category] || []).filter((r) => r.id !== button.dataset.id);
+            if (legacyProps[category] && !child[category].length) child[legacyProps[category]] = "";
+          }
+          syncLegacy(child);
+          saveViewing(child);
+        }
+        if (action === "save-size") {
+          const category = button.dataset.category;
+          const size = String(document.querySelector('[name="editSizeValue"]')?.value || "").trim();
+          if (!size) return alert("サイズを選んでください。");
+          const fit = document.querySelector('[name="editSizeFit"]')?.value || "just";
+          const brand = String(document.querySelector('[name="editSizeBrand"]')?.value || "").trim() || undefined;
+          const child = { ...viewing };
+          if (button.dataset.id === "legacy") {
+            child[category] = sortSizes([...(child[category] || []), { id: uid(), size, fit, brand }]);
+            if (legacyProps[category]) child[legacyProps[category]] = "";
+          } else {
+            child[category] = sortSizes((child[category] || []).map((r) => r.id === button.dataset.id ? { ...r, size, fit, brand } : r));
+          }
+          syncLegacy(child);
+          recordEdit = null;
+          saveViewing(child);
+        }
         render();
       });
       app.addEventListener("change", (event) => {

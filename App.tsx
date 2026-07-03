@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import {
+  deleteBrand,
   deleteChild,
   deleteFitCheck,
   getBrands,
@@ -408,12 +409,25 @@ export default function App() {
             await refresh();
             setScreen({ name: 'home' });
           }}
+          onDelete={async (id) => {
+            await deleteBrand(id);
+            await refresh();
+          }}
         />
       );
     }
     if (screen.name === 'records') {
       const freshChild = children.find((child) => child.id === screen.child.id) ?? screen.child;
-      return <RecordsScreen child={freshChild} onBack={() => setScreen({ name: 'home' })} />;
+      return (
+        <RecordsScreen
+          child={freshChild}
+          onBack={() => setScreen({ name: 'home' })}
+          onSave={async (child) => {
+            await saveChild(child);
+            await refresh();
+          }}
+        />
+      );
     }
     if (screen.name === 'recordChoice') {
       const freshChild = children.find((child) => child.id === screen.child.id) ?? screen.child;
@@ -592,18 +606,208 @@ function Home(props: {
   );
 }
 
-function RecordsScreen(props: { child: Child; onBack: () => void }) {
+const legacySizeProps: Partial<Record<SizeCategoryKey, 'topsSize' | 'bottomsSize' | 'shoeSize'>> = {
+  topsRecords: 'topsSize',
+  bottomsRecords: 'bottomsSize',
+  shoeRecords: 'shoeSize',
+};
+
+function syncLegacySizes(child: Child): void {
+  (Object.entries(legacySizeProps) as Array<[SizeCategoryKey, 'topsSize' | 'bottomsSize' | 'shoeSize']>).forEach(
+    ([recordsField, legacyField]) => {
+      if (child[recordsField]?.length) child[legacyField] = child[recordsField][0].size;
+    },
+  );
+}
+
+function GrowthEditForm({
+  record,
+  onCancel,
+  onSave,
+}: {
+  record: GrowthRecord;
+  onCancel: () => void;
+  onSave: (measuredAt: string, heightCm?: number, weightKg?: number) => void;
+}) {
+  const initial = splitDate(record.measuredAt);
+  const [year, setYear] = useState(initial[0]);
+  const [month, setMonth] = useState(initial[1]);
+  const [day, setDay] = useState(initial[2]);
+  const [heightCm, setHeightCm] = useState(record.heightCm ? String(record.heightCm) : '');
+  const [weightKg, setWeightKg] = useState(record.weightKg ? String(record.weightKg) : '');
+
+  function submit() {
+    const measuredAt = joinDate(year, month, day);
+    if (!measuredAt) {
+      Alert.alert('記録日を選択してください', '年・月・日を選んでください。');
+      return;
+    }
+    const height = numberOrUndefined(heightCm);
+    const weight = numberOrUndefined(weightKg);
+    if (!height && !weight) {
+      Alert.alert('入力を確認してください', '身長か体重のどちらかは入力してください。');
+      return;
+    }
+    onSave(measuredAt, height, weight);
+  }
+
+  return (
+    <View style={styles.editBox}>
+      <DateSelect
+        label="記録日"
+        year={year}
+        month={month}
+        day={day}
+        onChange={([nextYear, nextMonth, nextDay]) => {
+          setYear(nextYear);
+          setMonth(nextMonth);
+          setDay(nextDay);
+        }}
+      />
+      <Field label="身長 cm（任意）" value={heightCm} onChangeText={setHeightCm} keyboardType="numeric" placeholder="例: 123" />
+      <Field label="体重 kg（任意）" value={weightKg} onChangeText={setWeightKg} keyboardType="numeric" placeholder="例: 32" />
+      <View style={styles.actionsRow}>
+        <Pressable style={styles.secondaryButtonFlex} onPress={onCancel}>
+          <Text style={styles.secondaryButtonText}>やめる</Text>
+        </Pressable>
+        <Pressable style={styles.primaryButtonFlex} onPress={submit}>
+          <Text style={styles.primaryButtonText}>保存</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function SizeEditForm({
+  category,
+  record,
+  onCancel,
+  onSave,
+}: {
+  category: SizeCategoryKey;
+  record: SizeRecord;
+  onCancel: () => void;
+  onSave: (size: string, fit: SizeFitStatus, brand?: string) => void;
+}) {
+  const [size, setSize] = useState(record.size);
+  const [fit, setFit] = useState<SizeFitStatus>(record.fit ?? 'just');
+  const [brand, setBrand] = useState(record.brand ?? '');
+
+  function submit() {
+    if (!size.trim()) {
+      Alert.alert('入力を確認してください', 'サイズを選んでください。');
+      return;
+    }
+    onSave(size.trim(), fit, brand.trim() || undefined);
+  }
+
+  return (
+    <View style={styles.editBox}>
+      <SelectBox label="サイズ" value={size} options={sizeOptionsFor(category)} onChange={setSize} placeholder="サイズを選択" />
+      <Text style={styles.label}>着用感</Text>
+      <Segmented options={sizeFits} value={fit} onChange={setFit} />
+      <Field label="メーカー・ブランド（任意）" value={brand} onChangeText={setBrand} placeholder="例: UNIQLO" />
+      <View style={styles.actionsRow}>
+        <Pressable style={styles.secondaryButtonFlex} onPress={onCancel}>
+          <Text style={styles.secondaryButtonText}>やめる</Text>
+        </Pressable>
+        <Pressable style={styles.primaryButtonFlex} onPress={submit}>
+          <Text style={styles.primaryButtonText}>保存</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function RecordsScreen(props: { child: Child; onBack: () => void; onSave: (child: Child) => void }) {
+  const [editTarget, setEditTarget] = useState<{ type: 'growth' | SizeCategoryKey; id: string } | null>(null);
   const growthRecords = sortedGrowthRecords(props.child);
   const graphRecords = [...growthRecords].reverse();
   const maxHeight = Math.max(...graphRecords.map((record) => record.heightCm ?? 0), 1);
   const maxWeight = Math.max(...graphRecords.map((record) => record.weightKg ?? 0), 1);
-  const groups = [
-    { title: '下着', records: normalizeSizeRecords(props.child.underwearRecords) },
-    { title: 'トップス', records: normalizeSizeRecords(props.child.topsRecords, props.child.topsSize) },
-    { title: 'ボトムス', records: normalizeSizeRecords(props.child.bottomsRecords, props.child.bottomsSize) },
-    { title: '靴下', records: normalizeSizeRecords(props.child.sockRecords) },
-    { title: '靴', records: normalizeSizeRecords(props.child.shoeRecords, props.child.shoeSize) },
+  const groups: Array<{ category: SizeCategoryKey; title: string; records: SizeRecord[] }> = [
+    { category: 'underwearRecords', title: '下着', records: normalizeSizeRecords(props.child.underwearRecords) },
+    { category: 'topsRecords', title: 'トップス', records: normalizeSizeRecords(props.child.topsRecords, props.child.topsSize) },
+    { category: 'bottomsRecords', title: 'ボトムス', records: normalizeSizeRecords(props.child.bottomsRecords, props.child.bottomsSize) },
+    { category: 'sockRecords', title: '靴下', records: normalizeSizeRecords(props.child.sockRecords) },
+    { category: 'shoeRecords', title: '靴', records: normalizeSizeRecords(props.child.shoeRecords, props.child.shoeSize) },
   ];
+
+  function persist(child: Child) {
+    setEditTarget(null);
+    props.onSave({ ...child, updatedAt: new Date().toISOString() });
+  }
+
+  function saveGrowth(record: GrowthRecord, measuredAt: string, heightCm?: number, weightKg?: number) {
+    const child = { ...props.child };
+    if (record.id === 'legacy') {
+      child.growthRecords = [...(child.growthRecords ?? []), { id: makeId(), measuredAt, heightCm, weightKg }];
+      child.heightCm = undefined;
+      child.weightKg = undefined;
+    } else {
+      child.growthRecords = (child.growthRecords ?? []).map((item) =>
+        item.id === record.id ? { ...item, measuredAt, heightCm, weightKg } : item,
+      );
+    }
+    persist(child);
+  }
+
+  function deleteGrowth(record: GrowthRecord) {
+    Alert.alert('この身長・体重の記録を削除しますか？', `${record.measuredAt}の記録を削除します。`, [
+      { text: 'キャンセル', style: 'cancel' },
+      {
+        text: '削除',
+        style: 'destructive',
+        onPress: () => {
+          const child = { ...props.child };
+          if (record.id === 'legacy') {
+            child.heightCm = undefined;
+            child.weightKg = undefined;
+          } else {
+            child.growthRecords = (child.growthRecords ?? []).filter((item) => item.id !== record.id);
+          }
+          persist(child);
+        },
+      },
+    ]);
+  }
+
+  function saveSize(category: SizeCategoryKey, record: SizeRecord, size: string, fit: SizeFitStatus, brand?: string) {
+    const child = { ...props.child };
+    const legacyProp = legacySizeProps[category];
+    if (record.id === 'legacy') {
+      child[category] = sortSizeRecords([...(child[category] ?? []), { id: makeId(), size, fit, brand }]);
+      if (legacyProp) child[legacyProp] = '';
+    } else {
+      child[category] = sortSizeRecords(
+        (child[category] ?? []).map((item) => (item.id === record.id ? { ...item, size, fit, brand } : item)),
+      );
+    }
+    syncLegacySizes(child);
+    persist(child);
+  }
+
+  function deleteSize(category: SizeCategoryKey, record: SizeRecord) {
+    Alert.alert('この記録を削除しますか？', `${formatSizeRecord(record)} を削除します。`, [
+      { text: 'キャンセル', style: 'cancel' },
+      {
+        text: '削除',
+        style: 'destructive',
+        onPress: () => {
+          const child = { ...props.child };
+          const legacyProp = legacySizeProps[category];
+          if (record.id === 'legacy') {
+            if (legacyProp) child[legacyProp] = '';
+          } else {
+            child[category] = (child[category] ?? []).filter((item) => item.id !== record.id);
+            if (legacyProp && child[category].length === 0) child[legacyProp] = '';
+          }
+          syncLegacySizes(child);
+          persist(child);
+        },
+      },
+    ]);
+  }
 
   return (
     <View>
@@ -616,11 +820,30 @@ function RecordsScreen(props: { child: Child; onBack: () => void }) {
         {growthRecords.length === 0 ? (
           <Text style={styles.emptyText}>まだ記録がありません。</Text>
         ) : (
-          growthRecords.map((record) => (
-            <Text key={record.id} style={styles.bodyText}>
-              {record.measuredAt}  {record.heightCm ? `${record.heightCm}cm` : '身長 -'}  {record.weightKg ? `${record.weightKg}kg` : '体重 -'}
-            </Text>
-          ))
+          growthRecords.map((record) =>
+            editTarget?.type === 'growth' && editTarget.id === record.id ? (
+              <GrowthEditForm
+                key={record.id}
+                record={record}
+                onCancel={() => setEditTarget(null)}
+                onSave={(measuredAt, heightCm, weightKg) => saveGrowth(record, measuredAt, heightCm, weightKg)}
+              />
+            ) : (
+              <View key={record.id} style={styles.recordLine}>
+                <Text style={styles.recordLineText}>
+                  {record.measuredAt}  {record.heightCm ? `${record.heightCm}cm` : '身長 -'}  {record.weightKg ? `${record.weightKg}kg` : '体重 -'}
+                </Text>
+                <View style={styles.recordActions}>
+                  <Pressable style={styles.miniEditButton} onPress={() => setEditTarget({ type: 'growth', id: record.id })}>
+                    <Text style={styles.miniEditText}>編集</Text>
+                  </Pressable>
+                  <Pressable style={styles.miniDangerButton} onPress={() => deleteGrowth(record)}>
+                    <Text style={styles.miniDangerText}>削除</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ),
+          )
         )}
       </View>
       {graphRecords.length > 0 ? (
@@ -630,16 +853,34 @@ function RecordsScreen(props: { child: Child; onBack: () => void }) {
         </View>
       ) : null}
       {groups.map((group) => (
-        <View key={group.title} style={styles.card}>
+        <View key={group.category} style={styles.card}>
           <Text style={styles.noticeTitle}>{group.title}サイズ感</Text>
           {group.records.length === 0 ? (
             <Text style={styles.muted}>まだ記録がありません。</Text>
           ) : (
-            groupedSizeLines(group.records).map((line) => (
-              <Text key={line.size} style={styles.bodyText}>
-                {line.size}  {line.detail}
-              </Text>
-            ))
+            group.records.map((record) =>
+              editTarget?.type === group.category && editTarget.id === record.id ? (
+                <SizeEditForm
+                  key={record.id}
+                  category={group.category}
+                  record={record}
+                  onCancel={() => setEditTarget(null)}
+                  onSave={(size, fit, brand) => saveSize(group.category, record, size, fit, brand)}
+                />
+              ) : (
+                <View key={record.id} style={styles.recordLine}>
+                  <Text style={styles.recordLineText}>{formatSizeRecord(record)}</Text>
+                  <View style={styles.recordActions}>
+                    <Pressable style={styles.miniEditButton} onPress={() => setEditTarget({ type: group.category, id: record.id })}>
+                      <Text style={styles.miniEditText}>編集</Text>
+                    </Pressable>
+                    <Pressable style={styles.miniDangerButton} onPress={() => deleteSize(group.category, record)}>
+                      <Text style={styles.miniDangerText}>削除</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ),
+            )
           )}
         </View>
       ))}
@@ -651,11 +892,14 @@ function BrandForm({
   brands,
   onCancel,
   onSave,
+  onDelete,
 }: {
   brands: RegisteredBrand[];
   onCancel: () => void;
   onSave: (brand: RegisteredBrand) => void;
+  onDelete: (id: string) => void;
 }) {
+  const [editingBrand, setEditingBrand] = useState<RegisteredBrand | null>(null);
   const [name, setName] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<SizeCategoryKey[]>([]);
 
@@ -665,22 +909,46 @@ function BrandForm({
     );
   }
 
+  function startEdit(brand: RegisteredBrand) {
+    setEditingBrand(brand);
+    setName(brand.name);
+    setSelectedCategories([...brand.categories]);
+  }
+
+  function confirmDelete(brand: RegisteredBrand) {
+    Alert.alert('このブランドを削除しますか？', `「${brand.name}」を削除します。記録済みのサイズデータは消えません。`, [
+      { text: 'キャンセル', style: 'cancel' },
+      {
+        text: '削除',
+        style: 'destructive',
+        onPress: () => {
+          if (editingBrand?.id === brand.id) {
+            setEditingBrand(null);
+            setName('');
+            setSelectedCategories([]);
+          }
+          onDelete(brand.id);
+        },
+      },
+    ]);
+  }
+
   function submit() {
     if (!name.trim() || selectedCategories.length === 0) {
       Alert.alert('入力を確認してください', 'ブランド名とカテゴリを選んでください。');
       return;
     }
     onSave({
-      id: makeId(),
+      id: editingBrand?.id ?? makeId(),
       name: name.trim(),
       categories: selectedCategories,
-      createdAt: new Date().toISOString(),
+      createdAt: editingBrand?.createdAt ?? new Date().toISOString(),
     });
   }
 
   return (
     <View>
-      <Text style={styles.sectionTitle}>ブランドを追加</Text>
+      <Text style={styles.sectionTitle}>{editingBrand ? 'ブランドを編集' : 'ブランドを追加'}</Text>
       <Field label="ブランド名" value={name} onChangeText={setName} placeholder="例: UNIQLO" />
       <Text style={styles.label}>使うカテゴリ</Text>
       <View style={styles.segmentWrap}>
@@ -701,9 +969,19 @@ function BrandForm({
         <View style={styles.card}>
           <Text style={styles.noticeTitle}>登録済みブランド</Text>
           {brands.map((brand) => (
-            <Text key={brand.id} style={styles.bodyText}>
-              {brand.name} / {brand.categories.map((value) => sizeCategories.find((item) => item.value === value)?.label).join('・')}
-            </Text>
+            <View key={brand.id} style={styles.recordLine}>
+              <Text style={styles.recordLineText}>
+                {brand.name} / {brand.categories.map((value) => sizeCategories.find((item) => item.value === value)?.label).join('・')}
+              </Text>
+              <View style={styles.recordActions}>
+                <Pressable style={styles.miniEditButton} onPress={() => startEdit(brand)}>
+                  <Text style={styles.miniEditText}>編集</Text>
+                </Pressable>
+                <Pressable style={styles.miniDangerButton} onPress={() => confirmDelete(brand)}>
+                  <Text style={styles.miniDangerText}>削除</Text>
+                </Pressable>
+              </View>
+            </View>
           ))}
         </View>
       ) : null}
@@ -712,7 +990,7 @@ function BrandForm({
           <Text style={styles.secondaryButtonText}>戻る</Text>
         </Pressable>
         <Pressable style={styles.primaryButtonFlex} onPress={submit}>
-          <Text style={styles.primaryButtonText}>保存</Text>
+          <Text style={styles.primaryButtonText}>{editingBrand ? '変更を保存' : '保存'}</Text>
         </Pressable>
       </View>
     </View>
@@ -1472,6 +1750,14 @@ const styles = StyleSheet.create({
   sizeSummaryItems: { flex: 1, gap: 2 },
   sizeSummaryText: { fontSize: 14, lineHeight: 20, color: '#374151' },
   sizeRecordBox: { marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#ffedd5' },
+  recordLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', paddingVertical: 6, borderTopWidth: 1, borderTopColor: '#ffedd5' },
+  recordLineText: { flex: 1, minWidth: 150, fontSize: 15, lineHeight: 22, color: '#374151' },
+  recordActions: { flexDirection: 'row', gap: 6 },
+  miniEditButton: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#eff6ff' },
+  miniEditText: { fontSize: 13, fontWeight: '800', color: '#1d4ed8' },
+  miniDangerButton: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#fee2e2' },
+  miniDangerText: { fontSize: 13, fontWeight: '800', color: '#b91c1c' },
+  editBox: { marginTop: 6, marginBottom: 6, padding: 10, borderRadius: 8, backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fdba74' },
   choiceGrid: { gap: 10, marginBottom: 12 },
   choiceButton: { minHeight: 54, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#fdba74' },
   choiceButtonText: { fontSize: 17, fontWeight: '800', color: '#9a3412' },

@@ -1,12 +1,12 @@
 :root {
-  --bg: #fff8f2;
+  --bg: #f4f8f4;
   --card: #ffffff;
-  --text: #4a3b32;
-  --sub: #8c7b6e;
-  --accent: #ff8c69;
-  --accent-dark: #e06a45;
-  --line: #f0e0d2;
-  --pr: #b08968;
+  --text: #38443c;
+  --sub: #6f7f74;
+  --accent: #4c9a6e;
+  --accent-dark: #377953;
+  --line: #dce8dd;
+  --pr: #7a8a6e;
 }
 
 * { box-sizing: border-box; }
@@ -16,7 +16,8 @@ body {
   font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
   background: var(--bg);
   color: var(--text);
-  line-height: 1.9;
+  line-height: 2.0;
+  font-size: 16px;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -49,7 +50,7 @@ header.site .tagline {
 .pr-note {
   font-size: 11px;
   color: var(--pr);
-  background: #fdf3e7;
+  background: #eef4ea;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 6px 10px;
@@ -61,7 +62,7 @@ h2 {
   font-size: 18px;
   margin: 40px 0 12px;
   padding: 8px 12px;
-  background: #ffeede;
+  background: #e4efe6;
   border-left: 5px solid var(--accent);
   border-radius: 4px;
 }
@@ -78,7 +79,7 @@ h3 { font-size: 16px; margin: 28px 0 8px; }
   margin: 14px 0;
   text-decoration: none;
   color: var(--text);
-  box-shadow: 0 2px 6px rgba(180, 140, 100, 0.08);
+  box-shadow: 0 2px 6px rgba(90, 130, 100, 0.10);
 }
 
 .card .title { font-size: 16px; font-weight: 700; color: var(--accent-dark); }
@@ -116,6 +117,16 @@ h3 { font-size: 16px; margin: 28px 0 8px; }
   margin-bottom: 6px;
 }
 
+.box-caution {
+  background: #fdf6ec;
+  border: 2px solid #e0b878;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 20px 0;
+  font-size: 13px;
+  color: #6e5a3a;
+}
+
 table.compare {
   width: 100%;
   border-collapse: collapse;
@@ -130,7 +141,7 @@ table.compare th, table.compare td {
   text-align: left;
 }
 
-table.compare th { background: #ffeede; }
+table.compare th { background: #e4efe6; }
 
 .table-scroll { overflow-x: auto; }
 
